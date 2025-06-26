@@ -180,12 +180,12 @@ jobs:
           
           # package.json
           cat > node_modules/extract-file-icon/package.json << 'MOCK_EOF'
-{
-  "name": "extract-file-icon",
-  "version": "0.3.2",
-  "main": "index.js"
-}
-MOCK_EOF
+          {
+            "name": "extract-file-icon",
+            "version": "0.3.2",
+            "main": "index.js"
+          }
+          MOCK_EOF
           
           # JavaScript 实现
           cat > node_modules/extract-file-icon/index.js << 'MOCK_EOF'
@@ -228,9 +228,9 @@ MOCK_EOF
             
             if [ -f "build/Release/addon.node" ]; then
               cp "build/Release/addon.node" "prebuilds/darwin-x64/"
-              echo "✅ Copied macOS binary to prebuilds"
+              echo "[SUCCESS] Copied macOS binary to prebuilds"
             else
-              echo "❌ macOS binary not found"
+              echo "[ERROR] macOS binary not found"
               exit 1
             fi
             
@@ -252,9 +252,9 @@ MOCK_EOF
             
             if [ -f "build/Release/addon.node" ]; then
               cp "build/Release/addon.node" "prebuilds/win32-x64/"
-              echo "✅ Copied Windows binary to prebuilds"
+              echo "[SUCCESS] Copied Windows binary to prebuilds"
             else
-              echo "❌ Windows binary not found"
+              echo "[ERROR] Windows binary not found"
               ls -la build/Release/ || echo "No build/Release directory"
               exit 1
             fi
@@ -285,16 +285,16 @@ MOCK_EOF
           echo "=== Build Summary for ${{ matrix.os }} ==="
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             if [ -f "prebuilds/darwin-x64/addon.node" ]; then
-              echo "✅ macOS: TypeScript compiled + Native module built successfully"
+              echo "[SUCCESS] macOS: TypeScript compiled + Native module built successfully"
             else
-              echo "❌ macOS: Build failed"
+              echo "[ERROR] macOS: Build failed"
               exit 1
             fi
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
             if [ -f "prebuilds/win32-x64/addon.node" ]; then
-              echo "✅ Windows: TypeScript compiled + Native module built successfully"
+              echo "[SUCCESS] Windows: TypeScript compiled + Native module built successfully"
             else
-              echo "❌ Windows: Build failed"
+              echo "[ERROR] Windows: Build failed"
               exit 1
             fi
           fi
