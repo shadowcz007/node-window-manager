@@ -170,34 +170,6 @@ jobs:
           npm_config_msvs_version: ${{ matrix.os == 'windows-latest' && '2022' || '' }}
           npm_config_target_arch: x64
 
-      - name: Create Mock extract-file-icon (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "Creating mock extract-file-icon module for Windows..."
-          
-          # 创建 mock extract-file-icon 模块
-          mkdir -p node_modules/extract-file-icon
-          
-          # package.json
-          echo '{"name": "extract-file-icon", "version": "0.3.2", "main": "index.js"}' > node_modules/extract-file-icon/package.json
-          
-          # JavaScript 实现
-          echo '// Mock extract-file-icon for Windows CI build' > node_modules/extract-file-icon/index.js
-          echo 'function extractFileIcon(path, size) {' >> node_modules/extract-file-icon/index.js
-          echo '  console.warn("extract-file-icon: Windows CI build - returning null");' >> node_modules/extract-file-icon/index.js
-          echo '  return null;' >> node_modules/extract-file-icon/index.js
-          echo '}' >> node_modules/extract-file-icon/index.js
-          echo '' >> node_modules/extract-file-icon/index.js
-          echo 'module.exports = extractFileIcon;' >> node_modules/extract-file-icon/index.js
-          echo 'module.exports.default = extractFileIcon;' >> node_modules/extract-file-icon/index.js
-          
-          # TypeScript 声明文件
-          echo 'declare function extractFileIcon(path: string, size?: number): Buffer | null;' > node_modules/extract-file-icon/index.d.ts
-          echo 'export default extractFileIcon;' >> node_modules/extract-file-icon/index.d.ts
-          
-          echo "Mock extract-file-icon module created successfully"
-        shell: bash
-
       - name: Build TypeScript
         run: |
           echo "Building TypeScript..."
