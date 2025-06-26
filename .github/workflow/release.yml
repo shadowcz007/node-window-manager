@@ -1,0 +1,68 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 仅当推送以 v 开头的标签时触发（例如 v1.0.0）
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]  # 并行构建 macOS 和 Windows
+        include:
+          - os: macos-latest
+            artifact_name: macos-binary
+          - os: windows-latest
+            artifact_name: windows-binary
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci  # 更严格的依赖安装，避免版本漂移
+
+      - name: Build Project
+        run: npm run build  # 假设 package.json 中有 build 脚本
+
+      - name: Archive Artifacts
+        run: |
+          tar -zcvf ${{ matrix.artifact_name }}.tar.gz ./dist  # 压缩编译产物到 dist 目录
+        shell: bash
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.tar.gz
+
+  release:
+    needs: build  # 依赖 build 任务
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许创建 Release
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}  # 使用触发 Workflow 的标签名
+          name: Release ${{ github.ref_name }}
+          files: |
+            artifacts/macos-binary.tar.gz
+            artifacts/windows-binary.tar.gz
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 自动使用内置 Token
