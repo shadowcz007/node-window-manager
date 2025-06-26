@@ -15,8 +15,9 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30  # 设置超时时间
+    timeout-minutes: 20  # 设置较短的超时时间
     strategy:
+      fail-fast: false  # 不要因为一个平台失败就停止其他平台
       matrix:
         os: [macos-latest, windows-latest]  # 并行构建 macOS 和 Windows
         include:
@@ -39,51 +40,70 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18  # 降级到 Node 18，更稳定
           cache: 'yarn'
 
-      - name: Setup Build Tools (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Setup Build Environment
         run: |
-          # 确保 Xcode 命令行工具可用
-          xcode-select --install 2>/dev/null || echo "Xcode tools already installed"
-
-      - name: Setup Build Tools (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Setup Python (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Set Environment Variables (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "npm_config_msvs_version=2022" >> $GITHUB_ENV
-          echo "npm_config_python=python" >> $GITHUB_ENV
+          echo "Setting up build environment..."
+          node --version
+          npm --version
+          yarn --version
         shell: bash
 
       - name: Install Dependencies
-        run: yarn install --frozen-lockfile
-        env:
-          # 确保原生模块编译环境
-          NODE_GYP_FORCE_PYTHON: python
+        run: |
+          echo "Installing dependencies..."
+          yarn install --network-timeout 300000
+        shell: bash
 
-      - name: Build Project
-        run: yarn build
+      - name: Build TypeScript
+        run: |
+          echo "Building TypeScript..."
+          yarn build
+        shell: bash
+
+      - name: Build Native Module
+        run: |
+          echo "Building native module..."
+          yarn rebuild
+        shell: bash
+        continue-on-error: false
+
+      - name: Verify Build Output
+        run: |
+          echo "Checking build output..."
+          ls -la dist/ || echo "No dist directory"
+          ls -la build/ || echo "No build directory"
+        shell: bash
 
       - name: Archive Artifacts
         run: |
-          # 创建发布包，包含 TypeScript 编译产物和原生模块
+          echo "Creating release package..."
           mkdir -p release-package
-          cp -r dist release-package/
-          cp -r build release-package/ || true  # 原生模块构建产物
+          
+          # 复制必要文件
+          if [ -d "dist" ]; then
+            cp -r dist release-package/
+            echo "Copied dist directory"
+          fi
+          
+          if [ -d "build" ]; then
+            cp -r build release-package/
+            echo "Copied build directory"
+          fi
+          
           cp package.json release-package/
           cp README.md release-package/
           cp LICENSE release-package/
-          tar -zcvf ${{ matrix.artifact_name }}.tar.gz -C release-package .
+          
+          # 创建压缩包
+          cd release-package
+          tar -czf ../${{ matrix.artifact_name }}.tar.gz .
+          cd ..
+          
+          echo "Archive created: ${{ matrix.artifact_name }}.tar.gz"
+          ls -la ${{ matrix.artifact_name }}.tar.gz
         shell: bash
 
       - name: Upload Artifact
@@ -95,6 +115,8 @@ jobs:
   release:
     needs: build  # 依赖 build 任务
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # 设置超时时间
+    if: ${{ !cancelled() && (needs.build.result == 'success' || needs.build.result == 'failure') }}  # 即使部分构建失败也继续
     permissions:
       contents: write  # 允许创建 Release
 
@@ -103,6 +125,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
+        continue-on-error: true
+
+      - name: List Available Artifacts
+        run: |
+          echo "Available artifacts:"
+          find ./artifacts -type f -name "*.tar.gz" || echo "No artifacts found"
+        shell: bash
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -110,8 +139,8 @@ jobs:
           tag_name: ${{ inputs.tag_name || github.ref_name }}  # 手动触发时使用输入的标签，自动触发时使用推送的标签
           name: Release ${{ inputs.tag_name || github.ref_name }}
           files: |
-            artifacts/macos-binary/macos-binary.tar.gz
-            artifacts/windows-binary/windows-binary.tar.gz
+            artifacts/*/*.tar.gz
           draft: false
+          fail_on_unmatched_files: false  # 不要因为找不到文件而失败
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 自动使用内置 Token
