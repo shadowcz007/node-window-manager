@@ -165,27 +165,6 @@ jobs:
           npm cache clean --force
         shell: bash
 
-      - name: Handle extract-file-icon Dependency (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          echo "Handling extract-file-icon dependency for Windows..."
-          
-          # 临时移除 extract-file-icon 依赖以避免构建问题
-          node -e "
-            const pkg = require('./package.json');
-            const originalDeps = { ...pkg.dependencies };
-            delete pkg.dependencies['extract-file-icon'];
-            
-            // 保存修改后的 package.json
-            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-            
-            // 保存原始依赖信息供后续使用
-            require('fs').writeFileSync('original-deps.json', JSON.stringify(originalDeps, null, 2));
-          "
-          
-          echo "extract-file-icon dependency temporarily removed for Windows build"
-        shell: bash
-
       - name: Install Dependencies
         run: |
           echo "Installing dependencies..."

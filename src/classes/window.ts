@@ -1,5 +1,4 @@
-import { addon } from "..";
-import extractFileIcon from "extract-file-icon";
+import { addon } from ".."; 
 import { Monitor } from "./monitor";
 import { IRectangle } from "../interfaces";
 import { EmptyMonitor } from "./empty-monitor";
