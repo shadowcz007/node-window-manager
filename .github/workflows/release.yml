@@ -88,26 +88,18 @@ jobs:
         run: |
           echo "Setting up Windows build tools..."
           
-          # 检查现有 Visual Studio 安装
-          echo "Checking Visual Studio installations..."
-          dir "C:\Program Files\Microsoft Visual Studio\" 2>nul || echo "No VS in Program Files"
-          dir "C:\Program Files (x86)\Microsoft Visual Studio\" 2>nul || echo "No VS in Program Files (x86)"
-          
           # 检查 Python 安装
-          echo "Python location: $(where python)"
+          echo "Python version:"
           python --version
+          
+          # 检查构建环境
+          echo "Build environment check:"
+          echo "NODE_VERSION: $NODE_VERSION"
+          echo "RUNNER_OS: $RUNNER_OS"
           
           # 安装必要的工具
           npm install -g @mapbox/node-pre-gyp
-          
-          # 设置 Visual Studio 路径（如果存在）
-          if [ -d "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\" ]; then
-            echo 'VCINSTALLDIR=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\' >> $GITHUB_ENV
-          fi
-          
-          if [ -d "C:\Program Files (x86)\Windows Kits\10\" ]; then
-            echo 'WindowsSDKDir=C:\Program Files (x86)\Windows Kits\10\' >> $GITHUB_ENV
-          fi
+          echo "Build tools setup complete"
         shell: bash
 
       - name: Update node-gyp
@@ -144,6 +136,12 @@ jobs:
       - name: Build Native Module
         run: |
           echo "Building native module..."
+          echo "Environment variables:"
+          echo "PYTHON: $PYTHON"
+          echo "npm_config_python: $npm_config_python"
+          echo "npm_config_msvs_version: $npm_config_msvs_version"
+          
+          # 尝试构建
           yarn rebuild
         shell: bash
         env:
