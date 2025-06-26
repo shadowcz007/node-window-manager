@@ -20,7 +20,6 @@ jobs:
       fail-fast: false  # 不要因为一个平台失败就停止其他平台
       matrix:
         os: [macos-latest, windows-latest]  # 并行构建 macOS 和 Windows
-        node: [18]
         include:
           - os: macos-latest
             platform: darwin
@@ -47,7 +46,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 18  # 降级到 Node 18，更稳定
           cache: 'yarn'
           architecture: 'x64'  # 明确指定 x64 架构
 
@@ -397,13 +396,13 @@ jobs:
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ./release-assets
+          path: ./artifacts
         continue-on-error: true
 
       - name: List Available Artifacts
         run: |
           echo "Available artifacts:"
-          find ./release-assets -type f -name "*.tar.gz" || echo "No artifacts found"
+          find ./artifacts -type f -name "*.tar.gz" || echo "No artifacts found"
         shell: bash
 
       - name: Create Release
@@ -412,7 +411,7 @@ jobs:
           tag_name: ${{ inputs.tag_name || github.ref_name }}  # 手动触发时使用输入的标签，自动触发时使用推送的标签
           name: Release ${{ inputs.tag_name || github.ref_name }}
           files: |
-            release-assets/**/*
+            artifacts/**/*
           draft: false
           fail_on_unmatched_files: false  # 不要因为找不到文件而失败
         env:
