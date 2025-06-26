@@ -135,14 +135,28 @@ jobs:
 
       - name: Build Native Module
         run: |
-          echo "Building native module..."
-          echo "Environment variables:"
-          echo "PYTHON: $PYTHON"
-          echo "npm_config_python: $npm_config_python"
-          echo "npm_config_msvs_version: $npm_config_msvs_version"
-          
-          # 尝试构建
+          echo "Building native module for ${{ matrix.os }}..."
           yarn rebuild
+          
+          # 创建预编译二进制文件夹结构
+          echo "Creating prebuilt binary structure..."
+          mkdir -p prebuilds
+          
+          # 复制编译好的二进制文件
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            mkdir -p "prebuilds/darwin-x64"
+            if [ -f "build/Release/addon.node" ]; then
+              cp "build/Release/addon.node" "prebuilds/darwin-x64/"
+            fi
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            mkdir -p "prebuilds/win32-x64"
+            if [ -f "build/Release/addon.node" ]; then
+              cp "build/Release/addon.node" "prebuilds/win32-x64/"
+            fi
+          fi
+          
+          echo "Build output:"
+          ls -la build/Release/ || echo "No build output found"
         shell: bash
         env:
           PYTHON: python
@@ -154,6 +168,13 @@ jobs:
           echo "Checking build output..."
           ls -la dist/ || echo "No dist directory"
           ls -la build/ || echo "No build directory"
+          ls -la prebuilds/ || echo "No prebuilds directory"
+          
+          # 显示预编译二进制文件
+          if [ -d "prebuilds" ]; then
+            echo "Prebuilt binaries:"
+            find prebuilds -name "*.node" -exec ls -la {} \;
+          fi
         shell: bash
 
       - name: Archive Artifacts
@@ -172,9 +193,16 @@ jobs:
             echo "Copied build directory"
           fi
           
+          if [ -d "prebuilds" ]; then
+            cp -r prebuilds release-package/
+            echo "Copied prebuilds directory"
+          fi
+          
+          # 复制其他必要文件
           cp package.json release-package/
           cp README.md release-package/
           cp LICENSE release-package/
+          cp binding.gyp release-package/
           
           # 创建压缩包
           cd release-package
