@@ -154,6 +154,33 @@ jobs:
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
           
+          # 创建 mock extract-file-icon 模块
+          mkdir -p node_modules/extract-file-icon
+          cat > node_modules/extract-file-icon/package.json << 'MOCK_EOF'
+          {
+            "name": "extract-file-icon",
+            "version": "0.3.2",
+            "main": "index.js"
+          }
+          MOCK_EOF
+          
+          cat > node_modules/extract-file-icon/index.js << 'MOCK_EOF'
+          // Mock extract-file-icon for Windows CI build
+          function extractFileIcon(path, size) {
+            console.warn('extract-file-icon: Windows CI build - returning null');
+            return null;
+          }
+          
+          module.exports = extractFileIcon;
+          module.exports.default = extractFileIcon;
+          MOCK_EOF
+          
+          # 创建 TypeScript 声明文件
+          cat > node_modules/extract-file-icon/index.d.ts << 'MOCK_EOF'
+          declare function extractFileIcon(path: string, size?: number): Buffer | null;
+          export default extractFileIcon;
+          MOCK_EOF
+          
           echo "Windows build configuration complete"
         shell: bash
 
@@ -164,6 +191,34 @@ jobs:
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             echo "Windows: Installing dependencies without problematic native modules..."
             yarn install --network-timeout 300000 --ignore-scripts
+            
+            # 重新创建 mock extract-file-icon 模块（以防被 yarn 覆盖）
+            echo "Recreating mock extract-file-icon module..."
+            mkdir -p node_modules/extract-file-icon
+            cat > node_modules/extract-file-icon/package.json << 'MOCK_EOF'
+          {
+            "name": "extract-file-icon",
+            "version": "0.3.2",
+            "main": "index.js"
+          }
+          MOCK_EOF
+            
+            cat > node_modules/extract-file-icon/index.js << 'MOCK_EOF'
+          // Mock extract-file-icon for Windows CI build
+          function extractFileIcon(path, size) {
+            console.warn('extract-file-icon: Windows CI build - returning null');
+            return null;
+          }
+          
+          module.exports = extractFileIcon;
+          module.exports.default = extractFileIcon;
+          MOCK_EOF
+            
+            # 创建 TypeScript 声明文件
+            cat > node_modules/extract-file-icon/index.d.ts << 'MOCK_EOF'
+          declare function extractFileIcon(path: string, size?: number): Buffer | null;
+          export default extractFileIcon;
+          MOCK_EOF
           else
             echo "Non-Windows: Normal installation..."
             yarn install --network-timeout 300000
@@ -175,6 +230,36 @@ jobs:
           npm_config_msvs_version: 2019
 
 
+
+      - name: Verify Dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "Verifying Windows dependencies..."
+          
+          # 检查 mock extract-file-icon 模块
+          if [ -f "node_modules/extract-file-icon/index.js" ]; then
+            echo "✅ Mock extract-file-icon JavaScript module exists"
+          else
+            echo "❌ Mock extract-file-icon JavaScript module missing"
+            exit 1
+          fi
+          
+          if [ -f "node_modules/extract-file-icon/index.d.ts" ]; then
+            echo "✅ Mock extract-file-icon TypeScript declarations exist"
+          else
+            echo "❌ Mock extract-file-icon TypeScript declarations missing"
+            exit 1
+          fi
+          
+          echo "Mock module contents:"
+          ls -la node_modules/extract-file-icon/
+          
+          echo "JavaScript content:"
+          cat node_modules/extract-file-icon/index.js
+          
+          echo "TypeScript declarations:"
+          cat node_modules/extract-file-icon/index.d.ts
+        shell: bash
 
       - name: Build TypeScript
         run: |
