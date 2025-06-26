@@ -38,8 +38,7 @@
         "typescript": "3.8.3",
         "@mapbox/node-pre-gyp": "^1.0.11"
     },
-    "dependencies": {
-        "extract-file-icon": "^0.3.2",
+    "dependencies": { 
         "node-addon-api": "2.0.0"
     },
     "binary": {

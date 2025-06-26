@@ -150,10 +150,6 @@ export class Window {
     return addon.getWindowOpacity(this.id);
   }
 
-  getIcon(size: 16 | 32 | 64 | 256 = 64) {
-    return extractFileIcon(this.path, size);
-  }
-
   setOwner(window: Window | null | number) {
     if (!addon || !addon.setWindowOwner) return;
 
