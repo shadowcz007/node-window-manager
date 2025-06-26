@@ -46,7 +46,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 16  # 降级到 Node 16，更好的兼容性
+          node-version: 23  # 升级到 Node.js 23
           cache: 'yarn'
           architecture: 'x64'  # 明确指定 x64 架构
 
@@ -131,13 +131,11 @@ jobs:
           # 备份原始 package.json
           cp package.json package.json.backup
           
-          # 安装与 Node.js 16 兼容的 @mapbox/node-pre-gyp 版本
-          npm install @mapbox/node-pre-gyp@1.0.11 --save-dev --no-package-lock
+          # 安装最新版本的 node-gyp 和 node-pre-gyp
+          npm install @mapbox/node-pre-gyp@latest --save-dev --no-package-lock
+          npm install node-gyp@latest --save-dev --no-package-lock
           
-          # 更新 node-gyp 到兼容版本
-          npm install node-gyp@9.4.1 --save-dev --no-package-lock
-          
-          echo "Dependencies updated for Node.js 16 compatibility"
+          echo "Dependencies updated for Node.js 23 compatibility"
           echo "Updated package.json:"
           cat package.json
         shell: bash
@@ -150,8 +148,8 @@ jobs:
           echo "Python version:"
           python --version
           
-          # 全局安装与 Node.js 16 兼容的工具版本
-          npm install -g @mapbox/node-pre-gyp@1.0.11 node-gyp@9.4.1
+          # 全局安装最新版本的构建工具
+          npm install -g @mapbox/node-pre-gyp@latest node-gyp@latest
           
           echo "Build tools setup complete"
         shell: bash
@@ -177,8 +175,8 @@ jobs:
             const version = process.version;
             const major = parseInt(version.slice(1).split('.')[0]);
             console.log('Node.js major version:', major);
-            if (major < 16) {
-              console.error('ERROR: Node.js version too old. Minimum required: 16');
+            if (major < 23) {
+              console.error('ERROR: Node.js version too old. Minimum required: 23');
               process.exit(1);
             }
             console.log('Node.js version check passed');
@@ -186,7 +184,7 @@ jobs:
           
           # 确保使用兼容的包管理器设置
           yarn config set network-timeout 300000
-          yarn config set ignore-engines false
+          yarn config set ignore-engines true
           
           # 首先尝试标准安装
           echo "Attempting standard installation..."
@@ -274,8 +272,6 @@ jobs:
           npm_config_target_arch: x64
           npm_config_runtime: node
           npm_config_build_from_source: true
-
-
 
       - name: Verify Build Output
         run: |
