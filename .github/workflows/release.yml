@@ -15,6 +15,7 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30  # 设置超时时间
     strategy:
       matrix:
         os: [macos-latest, windows-latest]  # 并行构建 macOS 和 Windows
@@ -26,22 +27,63 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史，避免浅克隆问题
+
+      - name: Configure Git (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: 'yarn'
+
+      - name: Setup Build Tools (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # 确保 Xcode 命令行工具可用
+          xcode-select --install 2>/dev/null || echo "Xcode tools already installed"
+
+      - name: Setup Build Tools (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup Python (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Set Environment Variables (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "npm_config_msvs_version=2022" >> $GITHUB_ENV
+          echo "npm_config_python=python" >> $GITHUB_ENV
+        shell: bash
 
       - name: Install Dependencies
-        run: npm ci  # 更严格的依赖安装，避免版本漂移
+        run: yarn install --frozen-lockfile
+        env:
+          # 确保原生模块编译环境
+          NODE_GYP_FORCE_PYTHON: python
 
       - name: Build Project
-        run: npm run build  # 假设 package.json 中有 build 脚本
+        run: yarn build
 
       - name: Archive Artifacts
         run: |
-          tar -zcvf ${{ matrix.artifact_name }}.tar.gz ./dist  # 压缩编译产物到 dist 目录
+          # 创建发布包，包含 TypeScript 编译产物和原生模块
+          mkdir -p release-package
+          cp -r dist release-package/
+          cp -r build release-package/ || true  # 原生模块构建产物
+          cp package.json release-package/
+          cp README.md release-package/
+          cp LICENSE release-package/
+          tar -zcvf ${{ matrix.artifact_name }}.tar.gz -C release-package .
         shell: bash
 
       - name: Upload Artifact
@@ -68,8 +110,8 @@ jobs:
           tag_name: ${{ inputs.tag_name || github.ref_name }}  # 手动触发时使用输入的标签，自动触发时使用推送的标签
           name: Release ${{ inputs.tag_name || github.ref_name }}
           files: |
-            artifacts/macos-binary.tar.gz
-            artifacts/windows-binary.tar.gz
+            artifacts/macos-binary/macos-binary.tar.gz
+            artifacts/windows-binary/windows-binary.tar.gz
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 自动使用内置 Token
