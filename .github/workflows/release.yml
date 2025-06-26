@@ -46,7 +46,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18  # 降级到 Node 18，更稳定
+          node-version: 16  # 降级到 Node 16，更好的兼容性
           cache: 'yarn'
           architecture: 'x64'  # 明确指定 x64 架构
 
@@ -124,6 +124,24 @@ jobs:
           fi
         shell: bash
 
+      - name: Update Dependencies for Compatibility
+        run: |
+          echo "Updating dependencies for Node.js compatibility..."
+          
+          # 备份原始 package.json
+          cp package.json package.json.backup
+          
+          # 更新 @mapbox/node-pre-gyp 到更新版本
+          npm install @mapbox/node-pre-gyp@latest --save-dev --no-package-lock
+          
+          # 更新 node-gyp 到最新版本
+          npm install node-gyp@latest --save-dev --no-package-lock
+          
+          echo "Dependencies updated for compatibility"
+          echo "Updated package.json:"
+          cat package.json
+        shell: bash
+
       - name: Setup Build Tools
         run: |
           echo "Setting up build tools for ${{ matrix.os }}..."
@@ -133,7 +151,7 @@ jobs:
           python --version
           
           # 全局安装必要的工具
-          npm install -g @mapbox/node-pre-gyp node-gyp@latest
+          npm install -g @mapbox/node-pre-gyp@latest node-gyp@latest
           
           echo "Build tools setup complete"
         shell: bash
@@ -151,9 +169,6 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           echo "Handling extract-file-icon dependency for Windows..."
-          
-          # 备份原始 package.json
-          cp package.json package.json.backup
           
           # 临时移除 extract-file-icon 依赖以避免构建问题
           node -e "
@@ -174,8 +189,18 @@ jobs:
       - name: Install Dependencies
         run: |
           echo "Installing dependencies..."
-          echo "Using Node.js target version: $npm_config_target"
-          yarn install --network-timeout 300000
+          NODE_VERSION=$(node --version | sed 's/v//')
+          echo "Using Node.js target version: $NODE_VERSION"
+          
+          # 首先尝试标准安装
+          yarn install --network-timeout 300000 --ignore-scripts || {
+            echo "Standard install failed, trying alternative approach..."
+            
+            # 跳过 node-pre-gyp 脚本，手动安装其他依赖
+            yarn install --network-timeout 300000 --ignore-scripts --production=false
+            
+            echo "Dependencies installed, will build native module manually"
+          }
         shell: bash
         env:
           PYTHON: python
@@ -191,15 +216,17 @@ jobs:
           yarn build
         shell: bash
 
-      - name: Build Native Module
+      - name: Build Native Module Directly
         run: |
-          echo "Building native module for ${{ matrix.os }}..."
+          echo "Building native module directly using node-gyp for ${{ matrix.os }}..."
           echo "Node.js version: $(node --version)"
-          echo "npm_config_target: $npm_config_target"
+          
+          # 直接使用 node-gyp 构建，绕过 node-pre-gyp
+          echo "Starting direct node-gyp build..."
+          node-gyp configure build --verbose
           
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             echo "Building on macOS..."
-            yarn rebuild
             
             # 创建预编译二进制文件夹结构
             echo "Creating prebuilt binary structure..."
@@ -210,21 +237,13 @@ jobs:
               echo "[SUCCESS] Copied macOS binary to prebuilds"
             else
               echo "[ERROR] macOS binary not found"
+              echo "Build directory contents:"
+              ls -la build/Release/ || echo "No build/Release directory"
               exit 1
             fi
             
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
             echo "Building on Windows..."
-            
-            # 显示构建环境信息
-            echo "Build environment:"
-            echo "MSVS Version: $npm_config_msvs_version"
-            echo "Python: $npm_config_python"
-            echo "Target arch: $npm_config_target_arch"
-            echo "Node.js target: $npm_config_target"
-            
-            # 构建原生模块
-            yarn rebuild
             
             # 创建预编译二进制文件夹结构
             echo "Creating prebuilt binary structure..."
@@ -235,13 +254,13 @@ jobs:
               echo "[SUCCESS] Copied Windows binary to prebuilds"
             else
               echo "[ERROR] Windows binary not found"
+              echo "Build directory contents:"
               ls -la build/Release/ || echo "No build/Release directory"
               exit 1
             fi
           fi
           
-          echo "Build output:"
-          ls -la build/Release/ || echo "No build output found"
+          echo "Direct build completed successfully"
         shell: bash
         env:
           PYTHON: python
@@ -250,6 +269,8 @@ jobs:
           npm_config_target_arch: x64
           npm_config_runtime: node
           npm_config_build_from_source: true
+
+
 
       - name: Verify Build Output
         run: |
