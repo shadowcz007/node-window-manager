@@ -58,6 +58,10 @@ jobs:
           echo "Windows build skipped - using precompiled fallback" > build/Release/build_skipped.txt
         shell: bash
 
+      - name: Setup Visual Studio (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v2
+
       - name: Setup Build Environment
         run: |
           echo "Setting up build environment..."
@@ -82,6 +86,11 @@ jobs:
             # 设置全局环境变量用于 node-gyp
             echo "PYTHON=python" >> $GITHUB_ENV
             echo "npm_config_python=python" >> $GITHUB_ENV
+            echo "npm_config_msvs_version=2019" >> $GITHUB_ENV
+            echo "npm_config_node_gyp=$(npm prefix -g)/node_modules/node-gyp/bin/node-gyp.js" >> $GITHUB_ENV
+            
+            # 尝试跳过有问题的依赖构建
+            echo "npm_config_optional=false" >> $GITHUB_ENV
           fi
         shell: bash
 
@@ -121,14 +130,51 @@ jobs:
           npm cache clean --force
         shell: bash
 
+      - name: Configure Windows Build (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "Configuring Windows build environment..."
+          
+          # 创建 .npmrc 文件来配置 npm 行为
+          cat > .npmrc << EOF
+          msvs_version=2019
+          python=python
+          node_gyp=node-gyp
+          optional=false
+          EOF
+          
+          # 备份并修改 package.json 来移除有问题的依赖
+          cp package.json package.json.backup
+          
+          # 移除有问题的依赖 extract-file-icon
+          node -e "
+            const pkg = require('./package.json');
+            delete pkg.dependencies['extract-file-icon'];
+            pkg.scripts.postinstall = 'echo Skipping postinstall on Windows CI';
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+          
+          echo "Windows build configuration complete"
+        shell: bash
+
       - name: Install Dependencies
         run: |
           echo "Installing dependencies..."
-          yarn install --network-timeout 300000
+          
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "Windows: Installing dependencies without problematic native modules..."
+            yarn install --network-timeout 300000 --ignore-scripts
+          else
+            echo "Non-Windows: Normal installation..."
+            yarn install --network-timeout 300000
+          fi
         shell: bash
         env:
           PYTHON: python
           npm_config_python: python
+          npm_config_msvs_version: 2019
+
+
 
       - name: Build TypeScript
         run: |
@@ -193,6 +239,22 @@ jobs:
             echo "✅ macOS: TypeScript compiled + Native module built"
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
             echo "⚠️  Windows: TypeScript compiled, Native build skipped (VS issues)"
+          fi
+        shell: bash
+
+      - name: Restore Original Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "Restoring original files for packaging..."
+          if [ -f "package.json.backup" ]; then
+            cp package.json.backup package.json
+            echo "Original package.json restored"
+          fi
+          
+          # 清理 .npmrc 文件
+          if [ -f ".npmrc" ]; then
+            rm .npmrc
+            echo "Cleaned up .npmrc"
           fi
         shell: bash
 
