@@ -356,6 +356,21 @@ jobs:
           name: ${{ matrix.platform }}-x64
           path: ${{ matrix.platform }}-x64.tar.gz
 
+      - name: Commit Prebuilds
+        if: success()
+        run: |
+          # 配置 Git
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          
+          # 添加并提交预编译文件
+          git add prebuilds/
+          git commit -m "chore: update prebuilt binaries for ${{ matrix.platform }}-x64" || echo "No changes to commit"
+          
+          # 推送更改
+          git push origin HEAD:${GITHUB_REF_NAME}
+        shell: bash
+
   release:
     needs: build  # 依赖 build 任务
     runs-on: ubuntu-latest

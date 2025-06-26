@@ -46,7 +46,7 @@
     },
     "binary": {
         "module_name": "addon",
-        "module_path": "./lib/binding/{platform}-{arch}/",
+        "module_path": "./prebuilds/{platform}-{arch}/",
         "remote_path": "./v{version}/",
         "package_name": "{platform}-{arch}.tar.gz",
         "host": "https://github.com/shadowcz007/node-window-manager/releases/download/"
