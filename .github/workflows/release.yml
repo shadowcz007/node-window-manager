@@ -22,9 +22,10 @@ jobs:
         os: [macos-latest, windows-latest]  # 并行构建 macOS 和 Windows
         include:
           - os: macos-latest
-            artifact_name: macos-binary
+            platform: darwin
           - os: windows-latest
-            artifact_name: windows-binary
+            platform: win32
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -229,8 +230,6 @@ jobs:
           npm_config_python: python
           npm_config_msvs_version: 2019
 
-
-
       - name: Verify Dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
@@ -372,18 +371,18 @@ jobs:
           
           # 创建压缩包
           cd release-package
-          tar -czf ../${{ matrix.artifact_name }}.tar.gz .
+          tar -czf ../${{ matrix.platform }}-x64.tar.gz .
           cd ..
           
-          echo "Archive created: ${{ matrix.artifact_name }}.tar.gz"
-          ls -la ${{ matrix.artifact_name }}.tar.gz
+          echo "Archive created: ${{ matrix.platform }}-x64.tar.gz"
+          ls -la ${{ matrix.platform }}-x64.tar.gz
         shell: bash
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}.tar.gz
+          name: ${{ matrix.platform }}-x64
+          path: ${{ matrix.platform }}-x64.tar.gz
 
   release:
     needs: build  # 依赖 build 任务
@@ -394,7 +393,7 @@ jobs:
       contents: write  # 允许创建 Release
 
     steps:
-      - name: Download Artifacts
+      - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
@@ -412,7 +411,7 @@ jobs:
           tag_name: ${{ inputs.tag_name || github.ref_name }}  # 手动触发时使用输入的标签，自动触发时使用推送的标签
           name: Release ${{ inputs.tag_name || github.ref_name }}
           files: |
-            artifacts/*/*.tar.gz
+            artifacts/**/*
           draft: false
           fail_on_unmatched_files: false  # 不要因为找不到文件而失败
         env:
