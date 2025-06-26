@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*'  # 仅当推送以 v 开头的标签时触发（例如 v1.0.0）
+  workflow_dispatch:  # 允许手动触发
+    inputs:
+      tag_name:
+        description: '发布版本标签（例如：v1.0.0）'
+        required: true
+        default: 'v1.0.0'
+        type: string
 
 jobs:
   build:
@@ -58,8 +65,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}  # 使用触发 Workflow 的标签名
-          name: Release ${{ github.ref_name }}
+          tag_name: ${{ inputs.tag_name || github.ref_name }}  # 手动触发时使用输入的标签，自动触发时使用推送的标签
+          name: Release ${{ inputs.tag_name || github.ref_name }}
           files: |
             artifacts/macos-binary.tar.gz
             artifacts/windows-binary.tar.gz
