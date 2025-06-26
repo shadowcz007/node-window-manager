@@ -131,13 +131,13 @@ jobs:
           # 备份原始 package.json
           cp package.json package.json.backup
           
-          # 更新 @mapbox/node-pre-gyp 到更新版本
-          npm install @mapbox/node-pre-gyp@latest --save-dev --no-package-lock
+          # 安装与 Node.js 16 兼容的 @mapbox/node-pre-gyp 版本
+          npm install @mapbox/node-pre-gyp@1.0.11 --save-dev --no-package-lock
           
-          # 更新 node-gyp 到最新版本
-          npm install node-gyp@latest --save-dev --no-package-lock
+          # 更新 node-gyp 到兼容版本
+          npm install node-gyp@9.4.1 --save-dev --no-package-lock
           
-          echo "Dependencies updated for compatibility"
+          echo "Dependencies updated for Node.js 16 compatibility"
           echo "Updated package.json:"
           cat package.json
         shell: bash
@@ -150,8 +150,8 @@ jobs:
           echo "Python version:"
           python --version
           
-          # 全局安装必要的工具
-          npm install -g @mapbox/node-pre-gyp@latest node-gyp@latest
+          # 全局安装与 Node.js 16 兼容的工具版本
+          npm install -g @mapbox/node-pre-gyp@1.0.11 node-gyp@9.4.1
           
           echo "Build tools setup complete"
         shell: bash
@@ -192,15 +192,41 @@ jobs:
           NODE_VERSION=$(node --version | sed 's/v//')
           echo "Using Node.js target version: $NODE_VERSION"
           
+          # 验证 Node.js 版本兼容性
+          echo "Verifying Node.js version compatibility..."
+          node -e "
+            const version = process.version;
+            const major = parseInt(version.slice(1).split('.')[0]);
+            console.log('Node.js major version:', major);
+            if (major < 16) {
+              console.error('ERROR: Node.js version too old. Minimum required: 16');
+              process.exit(1);
+            }
+            console.log('Node.js version check passed');
+          "
+          
+          # 确保使用兼容的包管理器设置
+          yarn config set network-timeout 300000
+          yarn config set ignore-engines false
+          
           # 首先尝试标准安装
+          echo "Attempting standard installation..."
           yarn install --network-timeout 300000 --ignore-scripts || {
             echo "Standard install failed, trying alternative approach..."
             
-            # 跳过 node-pre-gyp 脚本，手动安装其他依赖
-            yarn install --network-timeout 300000 --ignore-scripts --production=false
+            # 清理并重试
+            yarn cache clean
             
-            echo "Dependencies installed, will build native module manually"
+            # 跳过引擎检查并忽略脚本安装
+            yarn install --network-timeout 300000 --ignore-scripts --ignore-engines || {
+              echo "Alternative install also failed, will proceed with manual build..."
+            }
+            
+            echo "Dependencies installation completed (some may be incomplete)"
           }
+          
+          echo "Final dependency installation status:"
+          yarn list --depth=0 | head -20
         shell: bash
         env:
           PYTHON: python
