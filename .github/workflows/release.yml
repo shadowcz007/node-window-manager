@@ -61,9 +61,6 @@ jobs:
           npm --version
           yarn --version
           
-          # 配置 node-gyp 使用正确的 Python 版本
-          npm config set python python3
-          
           # macOS 特定设置
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             echo "Setting up macOS build environment..."
@@ -77,13 +74,12 @@ jobs:
           # Windows 特定设置
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             echo "Setting up Windows build environment..."
-            # 配置 Visual Studio 版本
-            npm config set msvs_version 2022
-            # 设置架构
-            npm config set target_arch x64
-            npm config set target_platform win32
-            npm config set cache C:\npm-cache
-            npm config set node_gyp "C:\npm\node_modules\npm\node_modules\node-gyp\bin\node-gyp.js"
+            # 设置全局环境变量用于 node-gyp
+            echo "PYTHON=python" >> $GITHUB_ENV
+            echo "npm_config_python=python" >> $GITHUB_ENV
+            echo "npm_config_msvs_version=2022" >> $GITHUB_ENV
+            echo "npm_config_target_arch=x64" >> $GITHUB_ENV
+            echo "npm_config_target_platform=win32" >> $GITHUB_ENV
           fi
         shell: bash
 
@@ -94,15 +90,24 @@ jobs:
           
           # 检查现有 Visual Studio 安装
           echo "Checking Visual Studio installations..."
-          dir "C:\Program Files\Microsoft Visual Studio\" || echo "No VS in Program Files"
-          dir "C:\Program Files (x86)\Microsoft Visual Studio\" || echo "No VS in Program Files (x86)"
+          dir "C:\Program Files\Microsoft Visual Studio\" 2>nul || echo "No VS in Program Files"
+          dir "C:\Program Files (x86)\Microsoft Visual Studio\" 2>nul || echo "No VS in Program Files (x86)"
+          
+          # 检查 Python 安装
+          echo "Python location: $(where python)"
+          python --version
           
           # 安装必要的工具
           npm install -g @mapbox/node-pre-gyp
           
-          # 设置 Visual Studio 路径
-          echo 'VCINSTALLDIR=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\' >> $GITHUB_ENV
-          echo 'WindowsSDKDir=C:\Program Files (x86)\Windows Kits\10\' >> $GITHUB_ENV
+          # 设置 Visual Studio 路径（如果存在）
+          if [ -d "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\" ]; then
+            echo 'VCINSTALLDIR=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\' >> $GITHUB_ENV
+          fi
+          
+          if [ -d "C:\Program Files (x86)\Windows Kits\10\" ]; then
+            echo 'WindowsSDKDir=C:\Program Files (x86)\Windows Kits\10\' >> $GITHUB_ENV
+          fi
         shell: bash
 
       - name: Update node-gyp
@@ -127,9 +132,8 @@ jobs:
           yarn install --network-timeout 300000
         shell: bash
         env:
-          PYTHON: python3
-          npm_config_msvs_version: 2022
-          npm_config_target_arch: x64
+          PYTHON: python
+          npm_config_python: python
 
       - name: Build TypeScript
         run: |
@@ -143,13 +147,8 @@ jobs:
           yarn rebuild
         shell: bash
         env:
-          PYTHON: python3
-          npm_config_python: python3
-          npm_config_msvs_version: 2022
-          npm_config_target_arch: x64
-          npm_config_target_platform: win32
-          npm_config_disturl: https://nodejs.org/download/release/
-          npm_config_cache: C:\npm-cache
+          PYTHON: python
+          npm_config_python: python
         continue-on-error: false
 
       - name: Verify Build Output
