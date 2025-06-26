@@ -1,6 +1,6 @@
 {
     "name": "node-window-manager",
-    "version": "2.2.4",
+    "version": "2.2.5",
     "description": "Manage windows in macOS, Windows and Linux",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -16,7 +16,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/sentialx/node-window-manager.git"
+        "url": "git+https://github.com/shadowcz007/node-window-manager.git"
     },
     "keywords": [
         "window-manager",
@@ -25,12 +25,12 @@
         "linux",
         "windows"
     ],
-    "author": "sentialx",
+    "author": "shadowcz007",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/sentialx/node-window-manager/issues"
+        "url": "https://github.com/shadowcz007/node-window-manager/issues"
     },
-    "homepage": "https://github.com/sentialx/node-window-manager#readme",
+    "homepage": "https://github.com/shadowcz007/node-window-manager#readme",
     "devDependencies": {
         "@types/node": "13.11.1",
         "node-gyp": "^6.1.0",
@@ -47,6 +47,6 @@
         "module_path": "./lib/binding/{platform}-{arch}/",
         "remote_path": "./v{version}/",
         "package_name": "{module_name}-v{version}-{node_abi}-{platform}-{arch}.tar.gz",
-        "host": "https://github.com/sentialx/node-window-manager/releases/download/"
+        "host": "https://github.com/shadowcz007/node-window-manager/releases/download/"
     }
 }
