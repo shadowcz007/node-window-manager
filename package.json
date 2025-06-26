@@ -11,7 +11,8 @@
         "rebuild-dev": "npm run rebuild -- --debug",
         "prepublishOnly": "npm run build",
         "prepare": "npm run build",
-        "postinstall": "node-gyp-build"
+        "install": "node-pre-gyp install --fallback-to-build",
+        "package": "node-pre-gyp package"
     },
     "repository": {
         "type": "git",
@@ -34,14 +35,18 @@
         "@types/node": "13.11.1",
         "node-gyp": "^6.1.0",
         "tslint": "6.1.1",
-        "typescript": "3.8.3"
+        "typescript": "3.8.3",
+        "@mapbox/node-pre-gyp": "^1.0.10"
     },
     "dependencies": {
         "extract-file-icon": "^0.3.2",
-        "node-addon-api": "2.0.0",
-        "node-gyp-build": "^4.2.1"
+        "node-addon-api": "2.0.0"
     },
     "binary": {
-        "napi_versions": [3]
+        "module_name": "addon",
+        "module_path": "./lib/binding/{platform}-{arch}/",
+        "remote_path": "./v{version}/",
+        "package_name": "{module_name}-v{version}-{node_abi}-{platform}-{arch}.tar.gz",
+        "host": "https://github.com/sentialx/node-window-manager/releases/download/"
     }
 }
